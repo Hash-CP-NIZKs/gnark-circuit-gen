@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -52,6 +51,4 @@ func TestEcdsaPreHashed(t *testing.T) {
 	assert := test.NewAssert(t)
 	err := test.IsSolved(&circuit, &witness, ecc.BN254.ScalarField())
 	assert.NoError(err)
-	// assert.ProverSucceeded(&circuit, &witness, test.WithBackends(backend.GROTH16), test.WithCurves(ecc.BN254))
-	fmt.Println("done")
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -70,15 +69,21 @@ func (c *EcdsaCircuit[T, S]) Define(api frontend.API) error {
 }
 
 func RunECDSA() {
+	// generate parameters
 	privKey, _ := ecdsa.GenerateKey(rand.Reader)
 	publicKey := privKey.PublicKey
+
+	// sign
 	msg := []byte("testing ECDSA (pre-hashed)")
 	sigBin, _ := privKey.Sign(msg, nil)
 
+	// check that the signature is correct
 	flag, _ := publicKey.Verify(sigBin, msg, nil)
 	if !flag {
 		panic("can't verify signature")
 	}
+
+	// unmarshal signature
 	var sig ecdsa.Signature
 	sig.SetBytes(sigBin)
 	r, s := new(big.Int), new(big.Int)
@@ -101,8 +106,7 @@ func RunECDSA() {
 	}
 	// assert := test.NewAssert(t)
 	err := test.IsSolved(&circuit, &witness, ecc.BN254.ScalarField())
-	// assert.NoError(err)
-	fmt.Println(err)
-	// assert.ProverSucceeded(&circuit, &witness, test.WithBackends(backend.GROTH16), test.WithCurves(ecc.BN254))
-	fmt.Println("done")
+	if err != nil {
+		panic(err)
+	}
 }
