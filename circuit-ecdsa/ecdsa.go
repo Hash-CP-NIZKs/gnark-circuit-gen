@@ -156,23 +156,23 @@ func RunECDSA() {
 	{
 		r1cs := r1cs.(constraint.R1CS)
 
-		/* r1cs.json */
-		err = export_utils.SerializeR1CS(r1cs, "output/r1cs.json")
+		/* r1cs.cbor */
+		err = export_utils.SerializeR1CS(r1cs, "output/r1cs.cbor")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		/* assignment.json */
-		err = export_utils.SerializeAssignment(solution, "output/assignment.json")
+		/* assignment.cbor */
+		err = export_utils.SerializeAssignment(solution, "output/assignment.cbor")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		/* lookup.json */
+		/* lookup.cbor */
 		lookup := varuna.GetLookupByBuilder(builder)
-		err = export_utils.SerializeLookup(lookup, r1cs, "output/lookup.json")
+		err = export_utils.SerializeLookup(lookup, r1cs, "output/lookup.cbor")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
