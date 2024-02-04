@@ -1,5 +1,9 @@
 package main
 
+import (
+	circuit_ecdsa "gnark-ecdsa-test/circuit-ecdsa"
+)
+
 func main() {
-	RunECDSA()
+	circuit_ecdsa.RunECDSA()
 }
