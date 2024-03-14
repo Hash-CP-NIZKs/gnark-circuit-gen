@@ -2,6 +2,7 @@ package circuit_ecdsa
 
 import (
 	"crypto/rand"
+	"flag"
 	"fmt"
 	"math/big"
 	"os"
@@ -78,44 +79,155 @@ func (c *EcdsaCircuit[T, S]) Define(api frontend.API) error {
 	return nil
 }
 
+func CreateCircuitAndAssignment() (EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr], EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]) {
+	pkXStr := flag.String("pk_x", "", "The pk_x large integer in base-10")
+	pkYStr := flag.String("pk_y", "", "The pk_y large integer in base-10")
+	sigRStr := flag.String("sig_r", "", "The sig_r large integer in base-10")
+	sigSStr := flag.String("sig_s", "", "The sig_s large integer in base-10")
+	hashStr := flag.String("hash", "", "The hash large integer in base-10")
+
+	flag.Parse()
+
+	if *pkXStr == "" && *pkYStr == "" && *sigRStr == "" && *sigSStr == "" && *hashStr == "" {
+		fmt.Println("No parameters were specified. Generate parameters now")
+
+		// generate parameters
+		privKey, _ := ecdsa.GenerateKey(rand.Reader)
+		publicKey := privKey.PublicKey
+
+		// sign
+		msg := []byte("testing ECDSA (pre-hashed)")
+		sigBin, _ := privKey.Sign(msg, nil)
+
+		// check that the signature is correct
+		flag, _ := publicKey.Verify(sigBin, msg, nil)
+		if !flag {
+			panic("can't verify signature")
+		}
+
+		// unmarshal signature
+		var sig ecdsa.Signature
+		sig.SetBytes(sigBin)
+		r, s := new(big.Int), new(big.Int)
+		r.SetBytes(sig.R[:32])
+		s.SetBytes(sig.S[:32])
+
+		hash := ecdsa.HashToInt(msg)
+
+		circuit := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{}
+		assignment := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
+			Sig: Signature[emulated.Secp256k1Fr]{
+				R: emulated.ValueOf[emulated.Secp256k1Fr](r),
+				S: emulated.ValueOf[emulated.Secp256k1Fr](s),
+			},
+			Msg: emulated.ValueOf[emulated.Secp256k1Fr](hash),
+			Pub: PublicKey[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
+				X: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.X),
+				Y: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.Y),
+			},
+		}
+		return circuit, assignment
+	} else if *pkXStr != "" && *pkYStr != "" && *sigRStr != "" && *sigSStr != "" && *hashStr != "" {
+		pkX, ok := new(big.Int).SetString(*pkXStr, 10)
+		if !ok {
+			fmt.Println("Invalid pk_x value")
+			os.Exit(1)
+		}
+
+		pkY, ok := new(big.Int).SetString(*pkYStr, 10)
+		if !ok {
+			fmt.Println("Invalid pk_y value")
+			os.Exit(1)
+		}
+
+		sigR, ok := new(big.Int).SetString(*sigRStr, 10)
+		if !ok {
+			fmt.Println("Invalid sig_r value")
+			os.Exit(1)
+		}
+
+		sigS, ok := new(big.Int).SetString(*sigSStr, 10)
+		if !ok {
+			fmt.Println("Invalid sig_s value")
+			os.Exit(1)
+		}
+
+		hash, ok := new(big.Int).SetString(*hashStr, 10)
+		if !ok {
+			fmt.Println("Invalid hash value")
+			os.Exit(1)
+		}
+
+		// var publicKey ecdsa.PublicKey
+		// publicKey.A.X.SetBigInt(pkX)
+		// publicKey.A.Y.SetBigInt(pkY)
+
+		var publicKey ecdsa.PublicKey
+		err := publicKey.A.X.SetBytesCanonical(pkX.Bytes())
+		if err != nil {
+			panic("publicKey.A.X failed")
+		}
+		err = publicKey.A.Y.SetBytesCanonical(pkY.Bytes())
+		if err != nil {
+			panic("publicKey.A.Y failed")
+		}
+
+		var sig ecdsa.Signature
+		var t []byte
+		t = append(t[:], sigR.Bytes()[:]...)
+		t = append(t[:], sigS.Bytes()[:]...)
+		_, err = sig.SetBytes(t)
+		if err != nil {
+			panic("sig.SetBytes failed")
+		}
+
+		flag, err := publicKey.Verify(sig.Bytes(), hash.Bytes(), nil)
+		if !flag {
+			panic("can't verify signature")
+		} else if err != nil {
+			panic("can't verify signature, err not nil")
+		} else {
+			println("verify is ok")
+		}
+
+		circuit := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{}
+		assignment := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
+			Sig: Signature[emulated.Secp256k1Fr]{
+				R: emulated.ValueOf[emulated.Secp256k1Fr](sigR),
+				S: emulated.ValueOf[emulated.Secp256k1Fr](sigS),
+			},
+			Msg: emulated.ValueOf[emulated.Secp256k1Fr](hash),
+			Pub: PublicKey[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
+				X: emulated.ValueOf[emulated.Secp256k1Fp](pkX),
+				Y: emulated.ValueOf[emulated.Secp256k1Fp](pkY),
+			},
+		}
+		return circuit, assignment
+	} else {
+		fmt.Println("Invalid parameters !!!!")
+		if *pkXStr == "" {
+			fmt.Println("pk_x is empty!!!")
+		}
+		if *pkYStr == "" {
+			fmt.Println("pk_y is empty!!!")
+		}
+		if *sigRStr == "" {
+			fmt.Println("sig_r is empty!!!")
+		}
+		if *sigSStr == "" {
+			fmt.Println("sig_s is empty!!!")
+		}
+		if *hashStr == "" {
+			fmt.Println("hash is empty!!!")
+		}
+		panic("Invalid parameters so we exit now")
+	}
+}
+
 func RunECDSA() {
 	var err error
 
-	// generate parameters
-	privKey, _ := ecdsa.GenerateKey(rand.Reader)
-	publicKey := privKey.PublicKey
-
-	// sign
-	msg := []byte("testing ECDSA (pre-hashed)")
-	sigBin, _ := privKey.Sign(msg, nil)
-
-	// check that the signature is correct
-	flag, _ := publicKey.Verify(sigBin, msg, nil)
-	if !flag {
-		panic("can't verify signature")
-	}
-
-	// unmarshal signature
-	var sig ecdsa.Signature
-	sig.SetBytes(sigBin)
-	r, s := new(big.Int), new(big.Int)
-	r.SetBytes(sig.R[:32])
-	s.SetBytes(sig.S[:32])
-
-	hash := ecdsa.HashToInt(msg)
-
-	circuit := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{}
-	assignment := EcdsaCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
-		Sig: Signature[emulated.Secp256k1Fr]{
-			R: emulated.ValueOf[emulated.Secp256k1Fr](r),
-			S: emulated.ValueOf[emulated.Secp256k1Fr](s),
-		},
-		Msg: emulated.ValueOf[emulated.Secp256k1Fr](hash),
-		Pub: PublicKey[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
-			X: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.X),
-			Y: emulated.ValueOf[emulated.Secp256k1Fp](privKey.PublicKey.A.Y),
-		},
-	}
+	circuit, assignment := CreateCircuitAndAssignment()
 
 	newBuilder := r1cs.NewBuilder
 	var builder frontend.Builder = nil
