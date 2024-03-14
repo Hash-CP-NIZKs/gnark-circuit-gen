@@ -163,22 +163,32 @@ func CreateCircuitAndAssignment() (EcdsaCircuit[emulated.Secp256k1Fp, emulated.S
 		// publicKey.A.Y.SetBigInt(pkY)
 
 		var publicKey ecdsa.PublicKey
-		err := publicKey.A.X.SetBytesCanonical(pkX.Bytes())
-		if err != nil {
-			panic("publicKey.A.X failed")
+		{
+			var t [32]byte
+			pkX.FillBytes(t[:])
+			err := publicKey.A.X.SetBytesCanonical(t[:])
+			if err != nil {
+				panic("publicKey.A.X failed")
+			}
 		}
-		err = publicKey.A.Y.SetBytesCanonical(pkY.Bytes())
-		if err != nil {
-			panic("publicKey.A.Y failed")
+		{
+			var t [32]byte
+			pkY.FillBytes(t[:])
+			err := publicKey.A.Y.SetBytesCanonical(t[:])
+			if err != nil {
+				panic("publicKey.A.Y failed")
+			}
 		}
 
 		var sig ecdsa.Signature
-		var t [64]byte
-		sigR.FillBytes(t[:32])
-		sigS.FillBytes(t[32:])
-		_, err = sig.SetBytes(t[:])
-		if err != nil {
-			panic("sig.SetBytes failed")
+		{
+			var t [64]byte
+			sigR.FillBytes(t[:32])
+			sigS.FillBytes(t[32:])
+			_, err := sig.SetBytes(t[:])
+			if err != nil {
+				panic("sig.SetBytes failed")
+			}
 		}
 
 		flag, err := publicKey.Verify(sig.Bytes(), hash.Bytes(), nil)
