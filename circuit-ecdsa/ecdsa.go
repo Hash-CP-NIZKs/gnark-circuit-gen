@@ -173,10 +173,10 @@ func CreateCircuitAndAssignment() (EcdsaCircuit[emulated.Secp256k1Fp, emulated.S
 		}
 
 		var sig ecdsa.Signature
-		var t []byte
-		t = append(t[:], sigR.Bytes()[:]...)
-		t = append(t[:], sigS.Bytes()[:]...)
-		_, err = sig.SetBytes(t)
+		var t [64]byte
+		sigR.FillBytes(t[:32])
+		sigS.FillBytes(t[32:])
+		_, err = sig.SetBytes(t[:])
 		if err != nil {
 			panic("sig.SetBytes failed")
 		}
