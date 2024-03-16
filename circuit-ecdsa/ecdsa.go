@@ -67,9 +67,9 @@ func (pk PublicKey[T, S]) Verify(api frontend.API, params sw_emulated.CurveParam
 }
 
 type EcdsaCircuit[T, S emulated.FieldParams] struct {
-	Sig Signature[S]
-	Msg emulated.Element[S]
-	Pub PublicKey[T, S]
+	Sig Signature[S]        `gnark:",public"`
+	Msg emulated.Element[S] `gnark:",public"`
+	Pub PublicKey[T, S]     `gnark:",public"`
 }
 
 func (c *EcdsaCircuit[T, S]) Define(api frontend.API) error {
@@ -158,10 +158,6 @@ func CreateCircuitAndAssignment() (EcdsaCircuit[emulated.Secp256k1Fp, emulated.S
 			os.Exit(1)
 		}
 
-		// var publicKey ecdsa.PublicKey
-		// publicKey.A.X.SetBigInt(pkX)
-		// publicKey.A.Y.SetBigInt(pkY)
-
 		var publicKey ecdsa.PublicKey
 		{
 			var t [32]byte
@@ -191,6 +187,7 @@ func CreateCircuitAndAssignment() (EcdsaCircuit[emulated.Secp256k1Fp, emulated.S
 			}
 		}
 
+		/* Let's have a sanity check here, to make sure the tuple is correct */
 		flag, err := publicKey.Verify(sig.Bytes(), hash.Bytes(), nil)
 		if !flag {
 			panic("can't verify signature")
@@ -286,7 +283,7 @@ func RunECDSA() {
 		}
 
 		/* assignment.cbor */
-		err = export_utils.SerializeAssignment(solution, "output/assignment.cbor")
+		err = export_utils.SerializeAssignment(r1cs, solution, "output/assignment.cbor")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
