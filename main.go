@@ -1,9 +1,53 @@
 package main
 
 import (
-	circuit_ecdsa "gnark-ecdsa-test/circuit-ecdsa"
+	"fmt"
+	circuit_test1 "gnark-circuit-gen/circuit-test1"
+	"os"
+
+	"github.com/urfave/cli"
 )
 
 func main() {
-	circuit_ecdsa.RunECDSA()
+	cliApp := cli.NewApp()
+	cliApp.Name = "gnark-circuit-gen"
+	cliApp.Usage = "cli to generate circuit required by testing"
+	cliApp.Version = "0.0.1"
+
+	cliApp.Commands = []cli.Command{
+		cli.Command{
+			Name:  "test1",
+			Usage: "generate for test 1",
+			Flags: []cli.Flag{},
+			Action: func(ctx *cli.Context) error {
+				return circuit_test1.Run()
+			},
+		},
+		cli.Command{
+			Name:  "test2",
+			Usage: "generate for test 2",
+			Flags: []cli.Flag{},
+			Action: func(ctx *cli.Context) error {
+				name := ctx.String("n")
+				fmt.Println("hello,", name, "!")
+				return nil
+			},
+		},
+		cli.Command{
+			Name:  "test3",
+			Usage: "generate for test 3",
+			Flags: []cli.Flag{},
+			Action: func(ctx *cli.Context) error {
+				name := ctx.String("n")
+				fmt.Println("hello,", name, "!")
+				return nil
+			},
+		},
+	}
+
+	err := cliApp.Run(os.Args)
+	if err != nil {
+		fmt.Printf("demo-cli execute error: %v\n", err)
+		os.Exit(-1)
+	}
 }
