@@ -1,113 +1,56 @@
-package circuit_test1
+package circuit_gen
 
 import (
-	"crypto/rand"
-	"io"
+	"gnark-circuit-gen/pkg/circuit_gen/test1"
+	"gnark-circuit-gen/pkg/circuit_gen/test2"
+	"gnark-circuit-gen/pkg/circuit_gen/test3"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/secp256k1"
-	"github.com/consensys/gnark-crypto/ecc/secp256k1/ecdsa"
-	"github.com/consensys/gnark-crypto/ecc/secp256k1/fr"
 	"github.com/consensys/gnark/constraint"
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 	"github.com/consensys/gnark/logger"
-	"github.com/consensys/gnark/std/algebra/emulated/sw_emulated"
-	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck/varuna"
 	"github.com/consensys/gnark/std/utils/export_utils"
 )
 
-func RandG() (secp256k1.G1Affine, error) {
-	privKey, err := ecdsa.GenerateKey(rand.Reader)
-	return privKey.PublicKey.A, err
-}
+type TestCase uint32
 
-func RandScalarFieldElement() (k *big.Int, err error) {
-	b := make([]byte, fr.Bits/8+8)
-	_, err = io.ReadFull(rand.Reader, b)
+const (
+	Test1 TestCase = 1
+	Test2 TestCase = 2
+	Test3 TestCase = 3
+)
+
+func Run(testCase TestCase) (err error) {
+
+	var circuit, assignment frontend.Circuit = nil, nil
+	switch {
+	case testCase == Test1:
+		circuit, assignment, err = test1.RandomCircuit()
+	case testCase == Test2:
+		circuit, assignment, err = test2.RandomCircuit()
+	case testCase == Test3:
+		circuit, assignment, err = test3.RandomCircuit()
+	default:
+		panic("Unknown TestCase")
+	}
+
+	if err != nil {
+		return
+	}
+	err = genForCircuit(circuit, assignment)
 	if err != nil {
 		return
 	}
 
-	one := new(big.Int).SetInt64(1)
-
-	k = new(big.Int).SetBytes(b)
-	n := new(big.Int).Sub(fr.Modulus(), one)
-	k.Mod(k, n)
-	k.Add(k, one)
-
-	return
+	return nil
 }
 
-func Rand128Bit() (*big.Int, error) {
-	res := new(big.Int)
-
-	b := make([]byte, 128/8)
-	_, err := io.ReadFull(rand.Reader, b)
-	if err != nil {
-		return res, err
-	}
-
-	res.SetBytes(b)
-
-	return res, nil
-}
-
-func Run() error {
-	var err error
-
+func genForCircuit(circuit frontend.Circuit, assignment frontend.Circuit) error {
 	log := logger.Logger().With().Logger()
-
-	log.Info().Msg("generating random values")
-
-	G1, err := RandG()
-	if err != nil {
-		return err
-	}
-	G2, err := RandG()
-	if err != nil {
-		return err
-	}
-
-	S1, err := RandScalarFieldElement()
-	if err != nil {
-		return err
-	}
-	S2, err := RandScalarFieldElement()
-	if err != nil {
-		return err
-	}
-
-	N1, err := Rand128Bit()
-	if err != nil {
-		return err
-	}
-
-	N2, err := Rand128Bit()
-	if err != nil {
-		return err
-	}
-
-	log.Info().Msg("constructing circuit")
-
-	circuit := Test1Circuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{}
-	assignment := Test1Circuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
-		sw_emulated.AffinePoint[emulated.Secp256k1Fp]{
-			X: emulated.ValueOf[emulated.Secp256k1Fp](G1.X),
-			Y: emulated.ValueOf[emulated.Secp256k1Fp](G1.Y),
-		},
-		sw_emulated.AffinePoint[emulated.Secp256k1Fp]{
-			X: emulated.ValueOf[emulated.Secp256k1Fp](G2.X),
-			Y: emulated.ValueOf[emulated.Secp256k1Fp](G2.Y),
-		},
-		emulated.ValueOf[emulated.Secp256k1Fr](S1),
-		emulated.ValueOf[emulated.Secp256k1Fr](S2),
-		N1,
-		N2,
-	}
 
 	newBuilder := r1cs.NewBuilder
 	var builder frontend.Builder = nil
@@ -117,14 +60,14 @@ func Run() error {
 		return
 	}
 
-	r1cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), newBuilderWrapper, &circuit)
+	r1cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), newBuilderWrapper, circuit)
 	if err != nil {
 		log.Error().Msgf("error in building circuit: %s", err)
 		return err
 	}
 
 	log.Info().Msg("running gnark solver to generate solution (assignment)")
-	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
+	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 	if err != nil {
 		return err
 	}
