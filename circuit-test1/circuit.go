@@ -21,7 +21,7 @@ func (c *Test1Circuit[Base, Scalar]) Define(api frontend.API) error {
 	log := logger.Logger().With().Logger()
 	checker := rangecheck.New(api)
 
-	log.Info().Msg(fmt.Sprintf("using range checker: %T", checker))
+	log.Debug().Msg(fmt.Sprintf("using range checker: %T", checker))
 
 	log.Info().Msg("build circuit now")
 

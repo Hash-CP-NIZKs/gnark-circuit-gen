@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	circuit_test1 "gnark-circuit-gen/circuit-test1"
 	"os"
 
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
 
@@ -29,7 +29,7 @@ func main() {
 			Flags: []cli.Flag{},
 			Action: func(ctx *cli.Context) error {
 				name := ctx.String("n")
-				fmt.Println("hello,", name, "!")
+				log.Info().Msgf("hello: %s,", name, "!")
 				return nil
 			},
 		},
@@ -39,7 +39,7 @@ func main() {
 			Flags: []cli.Flag{},
 			Action: func(ctx *cli.Context) error {
 				name := ctx.String("n")
-				fmt.Println("hello,", name, "!")
+				log.Info().Msgf("hello: %s,", name, "!")
 				return nil
 			},
 		},
@@ -47,7 +47,7 @@ func main() {
 
 	err := cliApp.Run(os.Args)
 	if err != nil {
-		fmt.Printf("demo-cli execute error: %v\n", err)
+		log.Error().Msgf("demo-cli execute error: %v\n", err)
 		os.Exit(-1)
 	}
 }

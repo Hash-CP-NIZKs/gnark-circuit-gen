@@ -2,10 +2,8 @@ package circuit_test1
 
 import (
 	"crypto/rand"
-	"fmt"
 	"io"
 	"math/big"
-	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/secp256k1"
@@ -63,7 +61,7 @@ func Run() error {
 
 	log := logger.Logger().With().Logger()
 
-	log.Info().Msg("Generating random values")
+	log.Info().Msg("generating random values")
 
 	G1, err := RandG()
 	if err != nil {
@@ -93,7 +91,7 @@ func Run() error {
 		return err
 	}
 
-	log.Info().Msg("Construct circuit")
+	log.Info().Msg("constructing circuit")
 
 	circuit := Test1Circuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{}
 	assignment := Test1Circuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
@@ -121,31 +119,33 @@ func Run() error {
 
 	r1cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), newBuilderWrapper, &circuit)
 	if err != nil {
-		fmt.Println("error in building circuit", err)
+		log.Error().Msgf("error in building circuit: %s", err)
 		return err
 	}
 
-	println("r1cs.GetNbCoefficients(): ", r1cs.GetNbCoefficients())
-	println("r1cs.GetNbConstraints(): ", r1cs.GetNbConstraints())
-	println("r1cs.GetNbSecretVariables(): ", r1cs.GetNbSecretVariables())
-	println("r1cs.GetNbPublicVariables(): ", r1cs.GetNbPublicVariables())
-	println("r1cs.GetNbInternalVariables(): ", r1cs.GetNbInternalVariables())
-
-	fmt.Println("Generating witness", time.Now())
+	log.Info().Msg("running gnark solver to generate solution (assignment)")
 	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("Running Solver", time.Now())
 	_solution, err := r1cs.Solve(witness)
 	if err != nil {
 		return err
 	}
 	solution := _solution.(*cs.R1CSSolution)
-	fmt.Println("solution.W.Len()", solution.W.Len())
+
+	log.Info().Msgf("---------- [start] r1cs info   ----------")
+
+	log.Info().Msgf("r1cs.GetNbCoefficients(): %d", r1cs.GetNbCoefficients())
+	log.Info().Msgf("r1cs.GetNbConstraints(): %d", r1cs.GetNbConstraints())
+	log.Info().Msgf("r1cs.GetNbSecretVariables(): %d", r1cs.GetNbSecretVariables())
+	log.Info().Msgf("r1cs.GetNbPublicVariables(): %d", r1cs.GetNbPublicVariables())
+	log.Info().Msgf("r1cs.GetNbInternalVariables(): %d", r1cs.GetNbInternalVariables())
+	log.Info().Msgf("solution.W.Len(): %d", solution.W.Len())
+	log.Info().Msgf("---------- [ end ] r1cs info   ----------")
 
 	{
+		log.Info().Msgf("---------- [start] export r1cs ----------")
 		r1cs := r1cs.(constraint.R1CS)
 
 		/* r1cs.cbor */
@@ -166,6 +166,7 @@ func Run() error {
 		if err != nil {
 			return err
 		}
+		log.Info().Msgf("---------- [ end ] export r1cs ----------")
 	}
 	return nil
 }
